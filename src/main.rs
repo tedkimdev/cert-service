@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{Router, routing::get};
 use sqlx::postgres::PgPoolOptions;
 
-use crate::{repository::PostgresCertificateRepository, service::CertificateServiceImpl};
+use crate::{handlers::health, repository::PostgresCertificateRepository, service::CertificateServiceImpl};
 
 mod app_state;
 mod certificate_parser;
@@ -39,16 +39,18 @@ async fn main() {
 
     tracing::info!("Database connected and migrations applied");
 
-    let repo = Arc::new(PostgresCertificateRepository::new(pool));
+    let repo = Arc::new(PostgresCertificateRepository::new(pool.clone()));
     let service = Arc::new(CertificateServiceImpl::new(repo));
     let app_state = app_state::AppState {
         certificate_service: service,
+        pool,
     };
 
     // router
     let app = Router::new()
         .route("/health", get(health_check))
-        .merge(routes::certificate_routes())
+        .merge(routes::health::routes())
+        .merge(routes::certificates::routes())
         .with_state(app_state);
 
     // server
