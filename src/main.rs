@@ -5,6 +5,8 @@ mod errors;
 mod models;
 mod repository;
 mod service;
+mod app_state;
+mod handlers;
 
 #[tokio::main]
 async fn main() {
