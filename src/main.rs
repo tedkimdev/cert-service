@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{Router, routing::get};
 use sqlx::postgres::PgPoolOptions;
 
-use crate::{handlers::health, repository::PostgresCertificateRepository, service::CertificateServiceImpl};
+use crate::{repository::PostgresCertificateRepository, service::CertificateServiceImpl};
 
 mod app_state;
 mod certificate_parser;

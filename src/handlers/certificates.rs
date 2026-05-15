@@ -1,13 +1,13 @@
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
 };
 use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
-    dto::{CertificateResponse, CreateCertificateRequest},
+    dto::{CertificateListResponse, CertificateResponse, CreateCertificateRequest, ListCertificatesQuery},
     errors::AppError,
 };
 
@@ -25,4 +25,15 @@ pub async fn get_certificate(
 ) -> Result<Json<CertificateResponse>, AppError> {
     let cert = state.certificate_service.get_certificate(id).await?;
     Ok(Json(cert))
+}
+
+pub async fn list_certificates(
+    State(state): State<AppState>,
+    Query(params): Query<ListCertificatesQuery>,
+) -> Result<Json<CertificateListResponse>, AppError> {
+    let result = state
+        .certificate_service
+        .list_certificates(params.cursor, params.limit)
+        .await?;
+    Ok(Json(result))
 }

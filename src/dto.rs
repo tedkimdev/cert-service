@@ -43,3 +43,17 @@ impl From<Certificate> for CertificateResponse {
         }
     }
 }
+
+#[derive(Debug, Serialize)]
+pub struct CertificateListResponse {
+    pub data: Vec<CertificateResponse>,
+    pub next_cursor: Option<Uuid>,
+    pub has_more: bool,
+    pub total: i64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListCertificatesQuery {
+    pub cursor: Option<Uuid>,
+    pub limit: Option<i64>,
+}

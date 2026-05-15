@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{
     certificate_parser::parse_pem,
-    dto::{CertificateResponse, CreateCertificateRequest},
+    dto::{CertificateListResponse, CertificateResponse, CreateCertificateRequest},
     errors::AppError,
     models::InsertCertificateParam,
     repository::CertificatesRepository,
@@ -19,6 +19,11 @@ pub trait CertificateService {
     ) -> Result<CertificateResponse, AppError>;
 
     async fn get_certificate(&self, id: Uuid) -> Result<CertificateResponse, AppError>;
+    async fn list_certificates(
+        &self,
+        cursor: Option<Uuid>,
+        limit: Option<i64>,
+    ) -> Result<CertificateListResponse, AppError>;
 }
 
 // 구현체
@@ -67,5 +72,33 @@ impl CertificateService for CertificateServiceImpl {
     async fn get_certificate(&self, id: Uuid) -> Result<CertificateResponse, AppError> {
         let cert = self.repo.find_by_id(id).await?;
         Ok(cert.into())
+    }
+
+    async fn list_certificates(
+        &self,
+        cursor: Option<Uuid>,
+        limit: Option<i64>,
+    ) -> Result<CertificateListResponse, AppError> {
+        let limit = limit.unwrap_or(10).min(100);
+
+        let (mut certs, total) = self.repo.find_all(cursor, limit).await?;
+
+        let has_more = certs.len() as i64 > limit;
+        if has_more {
+            certs.pop();
+        }
+
+        let next_cursor = if has_more {
+            certs.last().map(|c| c.id)
+        } else {
+            None
+        };
+
+        Ok(CertificateListResponse {
+            data: certs.into_iter().map(|c| c.into()).collect(),
+            next_cursor,
+            has_more,
+            total,
+        })
     }
 }
