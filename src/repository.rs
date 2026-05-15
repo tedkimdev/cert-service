@@ -28,7 +28,7 @@ impl PostgresCertificateRepository {
 
 #[async_trait]
 impl CertificatesRepository for PostgresCertificateRepository {
-    async fn insert(&self, req: &InsertCertificateParam) -> Result<(Certificate), sqlx::Error> {
+    async fn insert(&self, req: &InsertCertificateParam) -> Result<Certificate, sqlx::Error> {
         let cert_id = Uuid::now_v7();
 
         let mut tx = self.pool.begin().await?;

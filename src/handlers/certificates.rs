@@ -7,7 +7,10 @@ use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
-    dto::{CertificateListResponse, CertificateResponse, CreateCertificateRequest, ListCertificatesQuery},
+    dto::{
+        CertificateListResponse, CertificateResponse, CreateCertificateRequest,
+        ListCertificatesQuery,
+    },
     errors::AppError,
 };
 

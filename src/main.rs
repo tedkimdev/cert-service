@@ -1,7 +1,11 @@
-use std::sync::Arc;
-
 use axum::{Router, routing::get};
 use sqlx::postgres::PgPoolOptions;
+use std::sync::Arc;
+use tower_http::{
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    trace::TraceLayer,
+};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{repository::PostgresCertificateRepository, service::CertificateServiceImpl};
 
@@ -17,11 +21,14 @@ mod service;
 
 #[tokio::main]
 async fn main() {
-    // logging
-    tracing_subscriber::fmt::init();
-
     // env
     dotenvy::dotenv().ok();
+
+    // logging
+    tracing_subscriber::registry()
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     // db
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -51,6 +58,24 @@ async fn main() {
         .route("/health", get(health_check))
         .merge(routes::health::routes())
         .merge(routes::certificates::routes())
+        .layer(PropagateRequestIdLayer::x_request_id())
+        .layer(
+            TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
+                let request_id = request
+                    .headers()
+                    .get("x-request-id")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("unknown");
+
+                tracing::info_span!(
+                    "request",
+                    method = %request.method(),
+                    uri = %request.uri(),
+                    request_id = %request_id,
+                )
+            }),
+        )
+        .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .with_state(app_state);
 
     // server
