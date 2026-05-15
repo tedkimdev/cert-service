@@ -6,7 +6,10 @@ use crate::models::{CertificateResponse, CreateCertificateRequest};
 
 #[async_trait]
 pub trait CertificatesRepository {
-    async fn insert(&self, req: &CreateCertificateRequest) -> Result<CertificateResponse, sqlx::Error>;
+    async fn insert(
+        &self,
+        req: &CreateCertificateRequest,
+    ) -> Result<CertificateResponse, sqlx::Error>;
 
     async fn find_by_id(&self, id: Uuid) -> Result<CertificateResponse, sqlx::Error>;
 }
@@ -23,7 +26,10 @@ impl PostgresCertificateRepository {
 
 #[async_trait]
 impl CertificatesRepository for PostgresCertificateRepository {
-    async fn insert(&self, req: &CreateCertificateRequest) -> Result<CertificateResponse, sqlx::Error> {
+    async fn insert(
+        &self,
+        req: &CreateCertificateRequest,
+    ) -> Result<CertificateResponse, sqlx::Error> {
         let cert_id = Uuid::now_v7();
 
         let mut tx = self.pool.begin().await?;
@@ -55,7 +61,7 @@ impl CertificatesRepository for PostgresCertificateRepository {
             .execute(&mut *tx)
             .await?;
         }
-        
+
         tx.commit().await?;
 
         self.find_by_id(cert_id).await

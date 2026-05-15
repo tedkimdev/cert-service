@@ -1,6 +1,7 @@
 use axum::{Router, routing::get};
 use sqlx::postgres::PgPoolOptions;
 
+mod errors;
 mod models;
 mod repository;
 
