@@ -37,7 +37,17 @@ pub fn parse_pem(pem: &str) -> Result<ParsedCertificate, AppError> {
                 Some(
                     san.general_names
                         .iter()
-                        .map(|name| name.to_string())
+                        .map(|name| match name {
+                            GeneralName::DNSName(dns) => dns.to_string(),
+                            GeneralName::IPAddress(ip) => ip
+                                .iter()
+                                .map(|b| b.to_string())
+                                .collect::<Vec<_>>()
+                                .join("."),
+                            GeneralName::RFC822Name(email) => email.to_string(),
+                            GeneralName::URI(uri) => uri.to_string(),
+                            _ => name.to_string(),
+                        })
                         .collect(),
                 )
             } else {
