@@ -18,14 +18,16 @@ export default function CertificateTable({ certificates }: CertificateTableProps
       </thead>
       <tbody>
         {certificates.map(cert => (
-          <Link key={cert.id} href={`/inventory/${cert.id}`} legacyBehavior>
-            <tr className="border-b hover:bg-gray-50 cursor-pointer">
-              <td className="p-3">{cert.subject}</td>
-              <td className="p-3">{cert.issuer}</td>
-              <td className="p-3">{new Date(cert.expiration).toLocaleDateString()}</td>
-              <td className="p-3">{cert.san_entries.join(', ')}</td>
-            </tr>
-          </Link>
+          <tr key={cert.id} className="border-b hover:bg-gray-50">
+            <td className="p-3">
+              <Link href={`/inventory/${cert.id}`} className="block w-full">
+                {cert.subject}
+              </Link>
+            </td>
+            <td className="p-3">{cert.issuer}</td>
+            <td className="p-3">{new Date(cert.expiration).toLocaleDateString()}</td>
+            <td className="p-3">{cert.san_entries.join(', ')}</td>
+          </tr>
         ))}
       </tbody>
     </table>

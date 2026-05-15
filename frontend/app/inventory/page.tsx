@@ -2,8 +2,13 @@ import { getCertificates } from '../lib/api';
 import DashboardCard from '../components/DashboardCard';
 import CertificateTable from '../components/CertificateTable';
 
-export default async function InventoryPage() {
-  const { data: certificates, total } = await getCertificates();
+interface PageProps {
+  searchParams: Promise<{ cursor?: string; }>;
+}
+
+export default async function InventoryPage({ searchParams }: PageProps) {
+  const { cursor } = await searchParams;
+  const { data: certificates, total, next_cursor, has_more } = await getCertificates(cursor);
 
   const expiringSoon = certificates.filter(cert => {
     const daysLeft = Math.ceil(
@@ -32,6 +37,27 @@ export default async function InventoryPage() {
 
       {/* certificate list */}
       <CertificateTable certificates={certificates} />
+
+      {/* Pagination */}
+      <div className="mt-4 flex justify-end gap-2">
+        {cursor && (
+          <a
+            href="/inventory"
+            className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-200 hover:text-gray-900"
+          >
+            First Page
+          </a>
+        )}
+        {has_more && next_cursor && (
+          <a
+            href={`/inventory?cursor=${next_cursor}`}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Next Page
+          </a>
+        )}
+      </div>
+
     </main>
   );
 }
