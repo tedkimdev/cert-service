@@ -1,5 +1,9 @@
+use std::sync::Arc;
+
 use axum::{Router, routing::get};
 use sqlx::postgres::PgPoolOptions;
+
+use crate::{repository::PostgresCertificateRepository, service::CertificateServiceImpl};
 
 mod errors;
 mod models;
@@ -7,6 +11,7 @@ mod repository;
 mod service;
 mod app_state;
 mod handlers;
+mod routes;
 
 #[tokio::main]
 async fn main() {
@@ -32,8 +37,15 @@ async fn main() {
 
     tracing::info!("Database connected and migrations applied");
 
+    let repo = Arc::new(PostgresCertificateRepository::new(pool));
+    let service = Arc::new(CertificateServiceImpl::new(repo));
+    let app_state = app_state::AppState { certificate_service: service };
+
     // router
-    let app = Router::new().route("/health", get(health_check));
+    let app = Router::new()
+        .route("/health", get(health_check))
+        .merge(routes::certificate_routes())
+        .with_state(app_state);
 
     // server
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
