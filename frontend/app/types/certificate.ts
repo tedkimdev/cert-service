@@ -13,3 +13,4 @@ export interface CertificateListResponse {
   has_more: boolean;
   total: number;
 }
+
