@@ -1,12 +1,14 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use uuid::Uuid;
 
 use crate::{
-    app_state::AppState, errors::AppError, models::{CertificateResponse, CreateCertificateRequest}
+    app_state::AppState,
+    dto::{CertificateResponse, CreateCertificateRequest},
+    errors::AppError,
 };
 
 pub async fn create_certificate(

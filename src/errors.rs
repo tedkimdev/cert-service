@@ -4,11 +4,10 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde_json::json;
-use tracing_subscriber::fmt::format;
 
 use crate::errors::certificate::CertificateError;
 
-mod certificate;
+pub mod certificate;
 
 #[derive(Debug)]
 pub enum AppError {
@@ -41,6 +40,9 @@ impl IntoResponse for AppError {
                     StatusCode::BAD_REQUEST,
                     format!("Invalid SAN entry: {}", san),
                 ),
+                CertificateError::InvalidPem(msg) => {
+                    (StatusCode::BAD_REQUEST, format!("Invalid PEM: {}", msg))
+                }
             },
             AppError::Database(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

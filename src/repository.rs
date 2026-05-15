@@ -2,16 +2,13 @@ use async_trait::async_trait;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::{CertificateResponse, CreateCertificateRequest};
+use crate::models::{Certificate, InsertCertificateParam};
 
 #[async_trait]
 pub trait CertificatesRepository {
-    async fn insert(
-        &self,
-        req: &CreateCertificateRequest,
-    ) -> Result<CertificateResponse, sqlx::Error>;
+    async fn insert(&self, req: &InsertCertificateParam) -> Result<Certificate, sqlx::Error>;
 
-    async fn find_by_id(&self, id: Uuid) -> Result<CertificateResponse, sqlx::Error>;
+    async fn find_by_id(&self, id: Uuid) -> Result<Certificate, sqlx::Error>;
 }
 
 pub struct PostgresCertificateRepository {
@@ -26,10 +23,7 @@ impl PostgresCertificateRepository {
 
 #[async_trait]
 impl CertificatesRepository for PostgresCertificateRepository {
-    async fn insert(
-        &self,
-        req: &CreateCertificateRequest,
-    ) -> Result<CertificateResponse, sqlx::Error> {
+    async fn insert(&self, req: &InsertCertificateParam) -> Result<Certificate, sqlx::Error> {
         let cert_id = Uuid::now_v7();
 
         let mut tx = self.pool.begin().await?;
@@ -67,7 +61,7 @@ impl CertificatesRepository for PostgresCertificateRepository {
         self.find_by_id(cert_id).await
     }
 
-    async fn find_by_id(&self, id: Uuid) -> Result<CertificateResponse, sqlx::Error> {
+    async fn find_by_id(&self, id: Uuid) -> Result<Certificate, sqlx::Error> {
         let cert = sqlx::query!(
             r#"
                 SELECT id, subject, issuer, expiration, created_at
@@ -92,7 +86,7 @@ impl CertificatesRepository for PostgresCertificateRepository {
         .map(|row| row.value)
         .collect();
 
-        Ok(CertificateResponse {
+        Ok(Certificate {
             id: cert.id,
             subject: cert.subject,
             issuer: cert.issuer,

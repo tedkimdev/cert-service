@@ -5,4 +5,5 @@ pub enum CertificateError {
     NotFound(Uuid),
     AlreadyExpired,
     InvalidSan(String),
+    InvalidPem(String),
 }

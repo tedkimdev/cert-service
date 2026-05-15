@@ -5,13 +5,15 @@ use sqlx::postgres::PgPoolOptions;
 
 use crate::{repository::PostgresCertificateRepository, service::CertificateServiceImpl};
 
+mod app_state;
+mod certificate_parser;
+mod dto;
 mod errors;
+mod handlers;
 mod models;
 mod repository;
-mod service;
-mod app_state;
-mod handlers;
 mod routes;
+mod service;
 
 #[tokio::main]
 async fn main() {
@@ -39,7 +41,9 @@ async fn main() {
 
     let repo = Arc::new(PostgresCertificateRepository::new(pool));
     let service = Arc::new(CertificateServiceImpl::new(repo));
-    let app_state = app_state::AppState { certificate_service: service };
+    let app_state = app_state::AppState {
+        certificate_service: service,
+    };
 
     // router
     let app = Router::new()

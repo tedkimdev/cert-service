@@ -1,0 +1,45 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use crate::models::Certificate;
+
+// TODO: Consider renaming to request.rs/response.rs or api.rs
+// TODO: Move to infrastructure/http/dto.rs when refactoring to Clean Architecture
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum CreateCertificateRequest {
+    Manual {
+        subject: String,
+        issuer: String,
+        expiration: DateTime<Utc>,
+        san_entries: Vec<String>,
+    },
+    Pem {
+        pem: String,
+    },
+}
+
+#[derive(Debug, Serialize)]
+pub struct CertificateResponse {
+    pub id: Uuid,
+    pub subject: String,
+    pub issuer: String,
+    pub expiration: DateTime<Utc>,
+    pub san_entries: Vec<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<Certificate> for CertificateResponse {
+    fn from(cert: Certificate) -> Self {
+        CertificateResponse {
+            id: cert.id,
+            subject: cert.subject,
+            issuer: cert.issuer,
+            expiration: cert.expiration,
+            san_entries: cert.san_entries,
+            created_at: cert.created_at,
+        }
+    }
+}
