@@ -2,6 +2,7 @@ use axum::{Router, routing::get};
 use sqlx::postgres::PgPoolOptions;
 
 mod models;
+mod repository;
 
 #[tokio::main]
 async fn main() {
