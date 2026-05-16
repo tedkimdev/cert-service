@@ -20,7 +20,7 @@ export default function CertificateTable({ initialData, cursor }: CertificateTab
     { fallbackData: initialData }
   );
 
-  if (isLoading) return <p>Loading...</p>;
+  if (!data) return <p>Loading...</p>;
 
   return (
     <table className="w-full border-collapse">
@@ -36,10 +36,14 @@ export default function CertificateTable({ initialData, cursor }: CertificateTab
         {data?.data.map(cert => (
           <tr
             key={cert.id}
-            className="border-b hover:bg-gray-50 cursor-pointer"
-            onClick={() => window.location.href = `/inventory/${cert.id}`}
+            className="border-b hover:bg-gray-50 cursor-pointer hover:text-gray-900"
           >
-            <td className="p-3">{cert.subject}</td>
+            <td className="p-3">
+              <a href={`/inventory/${cert.id}`}
+                className="absolute inset-0"
+              />\
+              {cert.subject}
+            </td>
             <td className="p-3">{cert.issuer}</td>
             <td className="p-3">{new Date(cert.expiration).toLocaleDateString()}</td>
             <td className="p-3">{cert.san_entries.join(', ')}</td>
