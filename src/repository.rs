@@ -7,13 +7,13 @@ use crate::models::{Certificate, InsertCertificateParam};
 #[async_trait]
 pub trait CertificatesRepository {
     async fn insert(&self, req: &InsertCertificateParam) -> Result<Certificate, sqlx::Error>;
-
     async fn find_by_id(&self, id: Uuid) -> Result<Certificate, sqlx::Error>;
     async fn find_all(
         &self,
         cursor: Option<Uuid>,
         limit: i64,
     ) -> Result<(Vec<Certificate>, i64), sqlx::Error>;
+    async fn count_expiring_soon(&self) -> Result<i64, sqlx::Error>;
 }
 
 pub struct PostgresCertificateRepository {
@@ -141,5 +141,18 @@ impl CertificatesRepository for PostgresCertificateRepository {
         }
 
         Ok((result, total))
+    }
+
+    async fn count_expiring_soon(&self) -> Result<i64, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*) FROM certificates
+            WHERE expiration > NOW()
+            AND expiration <= NOW() + INTERVAL '30 days'
+        "#
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map(|count| count.unwrap_or(0))
     }
 }

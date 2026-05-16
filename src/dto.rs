@@ -50,6 +50,7 @@ pub struct CertificateListResponse {
     pub next_cursor: Option<Uuid>,
     pub has_more: bool,
     pub total: i64,
+    pub expiring_soon_count: i64,
 }
 
 #[derive(Debug, Deserialize)]
