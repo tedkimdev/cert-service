@@ -1,6 +1,7 @@
 use axum::{Router, routing::get};
+use axum_server::tls_rustls::RustlsConfig;
 use sqlx::postgres::PgPoolOptions;
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 use tower_http::{
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::TraceLayer,
@@ -79,13 +80,17 @@ async fn main() {
         .with_state(app_state);
 
     // server
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+    let config = RustlsConfig::from_pem_file("certs/cert.pem", "certs/key.pem")
         .await
-        .expect("Failed to bind to port 3000");
+        .expect("Failed to load TLS config");
 
-    tracing::info!("Server running on port 3000");
+    let addr: SocketAddr = "0.0.0.0:3000".parse().expect("Failed to parse address");
+    tracing::info!("Server running on port 3000 with TLS");
 
-    axum::serve(listener, app).await.expect("Server failed");
+    axum_server::bind_rustls(addr, config)
+        .serve(app.into_make_service())
+        .await
+        .expect("Server failed");
 }
 
 async fn health_check() -> &'static str {

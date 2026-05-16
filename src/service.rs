@@ -83,7 +83,7 @@ impl CertificateService for CertificateServiceImpl {
 
         let (mut certs, total) = self.repo.find_all(cursor, limit).await?;
         let expiring_soon_count = self.repo.count_expiring_soon().await?;
-        
+
         let has_more = certs.len() as i64 > limit;
         if has_more {
             certs.pop();
