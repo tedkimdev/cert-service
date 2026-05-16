@@ -8,7 +8,7 @@ interface PageProps {
 
 export default async function InventoryPage({ searchParams }: PageProps) {
   const { cursor } = await searchParams;
-  const { data: certificates, total, next_cursor, has_more } = await getCertificates(cursor);
+  const { data: certificates, total, next_cursor, has_more, expiring_soon_count } = await getCertificates(cursor);
 
   const expiringSoon = certificates.filter(cert => {
     const daysLeft = Math.ceil(
@@ -30,7 +30,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         />
         <DashboardCard
           title="Expiring Soon (30 days)"
-          value={expiringSoon}
+          value={expiring_soon_count}
           color="yellow"
         />
       </div>

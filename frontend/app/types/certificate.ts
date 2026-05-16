@@ -12,5 +12,6 @@ export interface CertificateListResponse {
   next_cursor: string | null;
   has_more: boolean;
   total: number;
+  expiring_soon_count: number;
 }
 
