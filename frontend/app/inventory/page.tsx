@@ -8,14 +8,9 @@ interface PageProps {
 
 export default async function InventoryPage({ searchParams }: PageProps) {
   const { cursor } = await searchParams;
-  const { data: certificates, total, next_cursor, has_more, expiring_soon_count } = await getCertificates(cursor);
-
-  const expiringSoon = certificates.filter(cert => {
-    const daysLeft = Math.ceil(
-      (new Date(cert.expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    );
-    return daysLeft <= 30 && daysLeft > 0;
-  }).length;
+//   const { data: certificates, total, next_cursor, has_more, expiring_soon_count } = await getCertificates(cursor);
+  const response = await getCertificates(cursor);
+  const { total, next_cursor, has_more, expiring_soon_count } = response;
 
   return (
     <main className="p-8">
@@ -36,7 +31,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       </div>
 
       {/* certificate list */}
-      <CertificateTable certificates={certificates} />
+      <CertificateTable 
+        initialData={response}
+        cursor={cursor}
+      />
 
       {/* Pagination */}
       <div className="mt-4 flex justify-end gap-2">

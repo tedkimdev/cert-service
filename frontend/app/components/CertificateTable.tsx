@@ -1,11 +1,27 @@
-import Link from 'next/link';
-import { Certificate } from '../types/certificate';
+'use client';
+
+import useSWR from 'swr';
+import { CertificateListResponse } from '../types/certificate';
+import { certificatesFetcher } from '../lib/api';
 
 interface CertificateTableProps {
-  certificates: Certificate[];
+  initialData: CertificateListResponse;
+  cursor?: string;
 }
 
-export default function CertificateTable({ certificates }: CertificateTableProps) {
+export default function CertificateTable({ initialData, cursor }: CertificateTableProps) {
+  const params = new URLSearchParams();
+  if (cursor) params.append('cursor', cursor);
+  params.append('limit', '10');
+
+  const { data, isLoading } = useSWR<CertificateListResponse>(
+    `/api/certificates?${params}`,
+    certificatesFetcher,
+    { fallbackData: initialData }
+  );
+
+  if (isLoading) return <p>Loading...</p>;
+
   return (
     <table className="w-full border-collapse">
       <thead>
@@ -17,13 +33,13 @@ export default function CertificateTable({ certificates }: CertificateTableProps
         </tr>
       </thead>
       <tbody>
-        {certificates.map(cert => (
-          <tr key={cert.id} className="border-b hover:bg-gray-50">
-            <td className="p-3">
-              <Link href={`/inventory/${cert.id}`} className="block w-full">
-                {cert.subject}
-              </Link>
-            </td>
+        {data?.data.map(cert => (
+          <tr
+            key={cert.id}
+            className="border-b hover:bg-gray-50 cursor-pointer"
+            onClick={() => window.location.href = `/inventory/${cert.id}`}
+          >
+            <td className="p-3">{cert.subject}</td>
             <td className="p-3">{cert.issuer}</td>
             <td className="p-3">{new Date(cert.expiration).toLocaleDateString()}</td>
             <td className="p-3">{cert.san_entries.join(', ')}</td>

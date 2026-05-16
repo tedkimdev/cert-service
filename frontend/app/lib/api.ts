@@ -32,3 +32,6 @@ export async function getCertificate(id: string): Promise<Certificate> {
 
   return res.json();
 }
+
+export const certificatesFetcher = (url: string) =>
+  fetch(url).then(res => res.json());
