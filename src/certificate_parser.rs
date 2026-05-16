@@ -63,3 +63,56 @@ pub fn parse_pem(pem: &str) -> Result<ParsedCertificate, AppError> {
         san_entries,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TEST_PEM: &str = r#"-----BEGIN CERTIFICATE-----
+MIIDkDCCAnigAwIBAgIUJYc1EPML/XQQf6WSAU4gAaBYBWwwDQYJKoZIhvcNAQEL
+BQAwOjEZMBcGA1UEAwwQdGVzdC5leGFtcGxlLmNvbTEQMA4GA1UECgwHVGVzdE9y
+ZzELMAkGA1UEBhMCVVMwHhcNMjYwNTE2MTQxMDM3WhcNMjcwNTE2MTQxMDM3WjA6
+MRkwFwYDVQQDDBB0ZXN0LmV4YW1wbGUuY29tMRAwDgYDVQQKDAdUZXN0T3JnMQsw
+CQYDVQQGEwJVUzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANCvCaxx
+LWmPa1yH7tuu4t4bT1QDIDMNaz9FlwRc01bWzCwN0bOHoZoHgJq+hdvvwOT/Sjlu
+yo+b673etkuh8faPcV+QU5P9jev3WK0NKzOOJzRjUIMAZTeGPiNVt6fsVdw6a4R6
+xkuOXNffAhF6CU52UMtKUBWQlrA7dSVHSk1QCkebqXlOw/6JIsFCLHI3lagdakRa
+yAZGufQQ+L/BOiucKcBdWKbkI47/bB4O7gWkYyU2lbSlUWBz1QUgi5jpuAoMwbi+
+qPCysH5S0BVLN608Hb0l7fUfLl9SQB24dUHTukm1Bgz2dngBd7UTwQBOVz8/0Bcj
+DPZZIMn4meMHA+ECAwEAAaOBjTCBijAdBgNVHQ4EFgQUcUYLiBHu+BQYVcwez45e
+yXdHkpIwHwYDVR0jBBgwFoAUcUYLiBHu+BQYVcwez45eyXdHkpIwDwYDVR0TAQH/
+BAUwAwEB/zA3BgNVHREEMDAughB0ZXN0LmV4YW1wbGUuY29tghR3d3cudGVzdC5l
+eGFtcGxlLmNvbYcEfwAAATANBgkqhkiG9w0BAQsFAAOCAQEAmXrURw98/QswFC+d
+kcNQcyAivF9dg9oMHzQWAMb6chBoAYAdc8EVQ0GCumm1xejzZ7VOsr1MiI1MSFES
+64EQblrsGEW+iiYF5hyTqJw7XMqqNDPXAyfBOSD3XTM9QNqNPcA4vVKISUVu9CoU
+im41C6m7c97IQA5prhpGZwW1wLKpgC2ejf9XLdit9oD7H3QbcrIMji51/pU8bHz8
+v7HyzOL1SombWp6DDLME8uqpHOPPuXxwLPLLHg6KXYq1oytVPSP/0UxDvDYX8GYx
+aLE8WxcpVK3f/cLAJCbac8sDLTBVSzukAQP+zpvSyhrg4WCkzFHRIajcuqI0UZi/
+TKlk2A==
+-----END CERTIFICATE-----"#;
+
+    #[test]
+    fn test_parse_valid_pem() {
+        let result = parse_pem(TEST_PEM);
+        assert!(result.is_ok());
+
+        let parsed = result.unwrap();
+        assert!(!parsed.subject.is_empty());
+        assert!(!parsed.issuer.is_empty());
+    }
+
+    #[test]
+    fn test_parse_invalid_pem() {
+        let result = parse_pem("invalid pem");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_san_entries() {
+        let result = parse_pem(TEST_PEM);
+        assert!(result.is_ok());
+
+        let parsed = result.unwrap();
+        assert!(!parsed.san_entries.is_empty());
+    }
+}

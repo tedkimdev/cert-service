@@ -104,3 +104,97 @@ impl CertificateService for CertificateServiceImpl {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use chrono::Utc;
+    use std::sync::Arc;
+    use uuid::Uuid;
+
+    use crate::models::{Certificate, InsertCertificateParam};
+
+    struct MockCertificateRepository {
+        should_find: bool,
+    }
+
+    #[async_trait]
+    impl CertificatesRepository for MockCertificateRepository {
+        async fn insert(&self, req: &InsertCertificateParam) -> Result<Certificate, sqlx::Error> {
+            Ok(Certificate {
+                id: Uuid::now_v7(),
+                subject: req.subject.clone(),
+                issuer: req.issuer.clone(),
+                expiration: req.expiration,
+                san_entries: req.san_entries.clone(),
+                created_at: Utc::now(),
+            })
+        }
+
+        async fn find_by_id(&self, id: Uuid) -> Result<Certificate, sqlx::Error> {
+            if self.should_find {
+                Ok(Certificate {
+                    id,
+                    subject: "example.com".to_string(),
+                    issuer: "MyRootCA".to_string(),
+                    expiration: Utc::now() + chrono::Duration::days(365),
+                    san_entries: vec!["www.example.com".to_string()],
+                    created_at: Utc::now(),
+                })
+            } else {
+                Err(sqlx::Error::RowNotFound)
+            }
+        }
+
+        async fn find_all(
+            &self,
+            _cursor: Option<Uuid>,
+            _limit: i64,
+        ) -> Result<(Vec<Certificate>, i64), sqlx::Error> {
+            Ok((vec![], 0))
+        }
+
+        async fn count_expiring_soon(&self) -> Result<i64, sqlx::Error> {
+            Ok(0)
+        }
+    }
+
+    fn make_service() -> CertificateServiceImpl {
+        CertificateServiceImpl::new(Arc::new(MockCertificateRepository { should_find: false }))
+    }
+
+    #[tokio::test]
+    async fn test_create_certificate_manual() {
+        let service = make_service();
+        let req = CreateCertificateRequest::Manual {
+            subject: "example.com".to_string(),
+            issuer: "MyRootCA".to_string(),
+            expiration: Utc::now() + chrono::Duration::days(365),
+            san_entries: vec!["www.example.com".to_string()],
+        };
+
+        let result = service.create_certificate(&req).await;
+        assert!(result.is_ok());
+
+        let cert = result.unwrap();
+        assert_eq!(cert.subject, "example.com");
+        assert_eq!(cert.issuer, "MyRootCA");
+    }
+    
+    #[tokio::test]
+    async fn test_get_certificate_success() {
+        let service =
+            CertificateServiceImpl::new(Arc::new(MockCertificateRepository { should_find: true }));
+        let result = service.get_certificate(Uuid::now_v7()).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_certificate_not_found() {
+        let service =
+            CertificateServiceImpl::new(Arc::new(MockCertificateRepository { should_find: false }));
+        let result = service.get_certificate(Uuid::now_v7()).await;
+        assert!(result.is_err());
+    }
+}
