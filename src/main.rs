@@ -8,9 +8,13 @@ use tower_http::{
 };
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::{repository::PostgresCertificateRepository, service::CertificateServiceImpl};
+use crate::{
+    ca::dummy_ca_service::DummyCaService, repository::PostgresCertificateRepository,
+    service::CertificateServiceImpl,
+};
 
 mod app_state;
+mod ca;
 mod certificate_parser;
 mod dto;
 mod errors;
@@ -48,7 +52,9 @@ async fn main() {
     tracing::info!("Database connected and migrations applied");
 
     let repo = Arc::new(PostgresCertificateRepository::new(pool.clone()));
-    let service = Arc::new(CertificateServiceImpl::new(repo));
+    let ca_service = Arc::new(DummyCaService);
+    let service = Arc::new(CertificateServiceImpl::new(repo, ca_service));
+
     let app_state = app_state::AppState {
         certificate_service: service,
         pool,

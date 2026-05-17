@@ -31,6 +31,17 @@ pub struct CertificateResponse {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct IssueCertificateResponse {
+    pub id: Uuid,
+    pub subject: String,
+    pub issuer: String,
+    pub expiration: DateTime<Utc>,
+    pub san_entries: Vec<String>,
+    pub created_at: DateTime<Utc>,
+    pub pem: String,
+}
+
 impl From<Certificate> for CertificateResponse {
     fn from(cert: Certificate) -> Self {
         CertificateResponse {

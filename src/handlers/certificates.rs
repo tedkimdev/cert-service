@@ -9,7 +9,7 @@ use crate::{
     app_state::AppState,
     dto::{
         CertificateListResponse, CertificateResponse, CreateCertificateRequest,
-        ListCertificatesQuery,
+        IssueCertificateResponse, ListCertificatesQuery,
     },
     errors::AppError,
 };
@@ -17,7 +17,7 @@ use crate::{
 pub async fn create_certificate(
     State(state): State<AppState>,
     Json(req): Json<CreateCertificateRequest>,
-) -> Result<(StatusCode, Json<CertificateResponse>), AppError> {
+) -> Result<(StatusCode, Json<IssueCertificateResponse>), AppError> {
     let cert = state.certificate_service.create_certificate(&req).await?;
     Ok((StatusCode::CREATED, Json(cert)))
 }

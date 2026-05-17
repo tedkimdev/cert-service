@@ -3,8 +3,12 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
+    ca::CaService,
     certificate_parser::parse_pem,
-    dto::{CertificateListResponse, CertificateResponse, CreateCertificateRequest},
+    dto::{
+        CertificateListResponse, CertificateResponse, CreateCertificateRequest,
+        IssueCertificateResponse,
+    },
     errors::AppError,
     models::InsertCertificateParam,
     repository::CertificatesRepository,
@@ -16,7 +20,7 @@ pub trait CertificateService {
     async fn create_certificate(
         &self,
         req: &CreateCertificateRequest,
-    ) -> Result<CertificateResponse, AppError>;
+    ) -> Result<IssueCertificateResponse, AppError>;
 
     async fn get_certificate(&self, id: Uuid) -> Result<CertificateResponse, AppError>;
     async fn list_certificates(
@@ -29,11 +33,15 @@ pub trait CertificateService {
 // 구현체
 pub struct CertificateServiceImpl {
     repo: Arc<dyn CertificatesRepository + Send + Sync>,
+    ca_service: Arc<dyn CaService + Send + Sync>,
 }
 
 impl CertificateServiceImpl {
-    pub fn new(repo: Arc<dyn CertificatesRepository + Send + Sync>) -> Self {
-        Self { repo }
+    pub fn new(
+        repo: Arc<dyn CertificatesRepository + Send + Sync>,
+        ca_service: Arc<dyn CaService + Send + Sync>,
+    ) -> Self {
+        Self { repo, ca_service }
     }
 }
 
@@ -42,31 +50,58 @@ impl CertificateService for CertificateServiceImpl {
     async fn create_certificate(
         &self,
         req: &CreateCertificateRequest,
-    ) -> Result<CertificateResponse, AppError> {
+    ) -> Result<IssueCertificateResponse, AppError> {
         let param = match req {
             CreateCertificateRequest::Manual {
                 subject,
                 issuer,
                 expiration,
                 san_entries,
-            } => InsertCertificateParam {
-                subject: subject.clone(),
-                issuer: issuer.clone(),
-                expiration: *expiration,
-                san_entries: san_entries.clone(),
-            },
+            } => {
+                let issued = self
+                    .ca_service
+                    .issue_certificate(subject, san_entries, *expiration)
+                    .await?;
+
+                (
+                    InsertCertificateParam {
+                        subject: subject.clone(),
+                        issuer: issuer.clone(),
+                        expiration: *expiration,
+                        san_entries: san_entries.clone(),
+                    },
+                    issued.pem,
+                )
+            }
             CreateCertificateRequest::Pem { pem } => {
                 let parsed = parse_pem(pem)?;
-                InsertCertificateParam {
-                    subject: parsed.subject,
-                    issuer: parsed.issuer,
-                    expiration: parsed.expiration,
-                    san_entries: parsed.san_entries,
-                }
+                let issued = self
+                    .ca_service
+                    .issue_certificate(&parsed.subject, &parsed.san_entries, parsed.expiration)
+                    .await?;
+
+                (
+                    InsertCertificateParam {
+                        subject: parsed.subject,
+                        issuer: parsed.issuer,
+                        expiration: parsed.expiration,
+                        san_entries: parsed.san_entries,
+                    },
+                    issued.pem,
+                )
             }
         };
-        let cert = self.repo.insert(&param).await?;
-        Ok(cert.into())
+        let (insert_param, pem) = param;
+        let cert = self.repo.insert(&insert_param).await?;
+        Ok(IssueCertificateResponse {
+            id: cert.id,
+            subject: cert.subject,
+            issuer: cert.issuer,
+            expiration: cert.expiration,
+            san_entries: cert.san_entries,
+            created_at: cert.created_at,
+            pem,
+        })
     }
 
     async fn get_certificate(&self, id: Uuid) -> Result<CertificateResponse, AppError> {
@@ -181,7 +216,7 @@ mod tests {
         assert_eq!(cert.subject, "example.com");
         assert_eq!(cert.issuer, "MyRootCA");
     }
-    
+
     #[tokio::test]
     async fn test_get_certificate_success() {
         let service =
