@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*) FROM certificates\n            WHERE expiration > NOW()\n            AND expiration <= NOW() + INTERVAL '30 days'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e8f17f371df1b4dde8de3824031a63030a6a65f4993097e37bcbe58193a7db00"
+}
