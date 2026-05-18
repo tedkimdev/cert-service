@@ -7,7 +7,7 @@ lint:
 	cargo clippy --all-targets --all-features -- -D warnings
 
 test:
-	cargo test --all
+	SQLX_OFFLINE=true cargo test --all
 
 check: fmt lint test
 

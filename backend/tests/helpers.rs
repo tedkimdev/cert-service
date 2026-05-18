@@ -1,4 +1,5 @@
 use cert_service::app::Application;
+use cert_service::config::AppConfig;
 
 pub struct TestApp {
     pub address: String,
@@ -9,9 +10,9 @@ impl TestApp {
     pub async fn new() -> Self {
         dotenvy::dotenv().ok();
 
-        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        let config = AppConfig::load();
 
-        let app = Application::build(&database_url, "0.0.0.0:0")
+        let app = Application::build(&config)
             .await
             .expect("Failed to build application");
 
