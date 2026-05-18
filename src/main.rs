@@ -1,17 +1,13 @@
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
-use cert_service_practice::app::Application;
+use cert_service_practice::{app::Application, config::AppConfig};
 
 #[tokio::main]
 async fn main() {
-    // TODO: Move to config.rs
-    // - database max_connections
-    // - server host/port
-    // - TLS cert/key paths
-    // - RUST_LOG filter
-
     // env
     dotenvy::dotenv().ok();
+
+    let config = AppConfig::load();
 
     // logging
     tracing_subscriber::registry()
@@ -19,11 +15,8 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // db
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-    let app = Application::build(&database_url, "0.0.0.0:3000")
+    let app = Application::build(&config)
         .await
         .expect("Failed to build applciation");
-    app.run_https().await.expect("Failed to run application");
+    app.run_https(&config).await.expect("Failed to run application");
 }

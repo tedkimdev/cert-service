@@ -14,6 +14,7 @@ use crate::adapters::output::certificate_repository::PostgresCertificateReposito
 use crate::adapters::output::dummy_ca_service::DummyCaService;
 use crate::app_state::AppState;
 use crate::application::certificate::service::CertificateServiceImpl;
+use crate::config::AppConfig;
 
 pub struct Application {
     pub address: String,
@@ -22,10 +23,10 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn build(database_url: &str, address: &str) -> Result<Self, anyhow::Error> {
+    pub async fn build(config: &AppConfig) -> Result<Self, anyhow::Error> {
         let pool = PgPoolOptions::new()
-            .max_connections(5)
-            .connect(database_url)
+            .max_connections(config.db_max_connections)
+            .connect(&config.database_url)
             .await?;
 
         sqlx::migrate!("./migrations").run(&pool).await?;
@@ -62,19 +63,21 @@ impl Application {
             .with_state(app_state);
 
         Ok(Self {
-            address: address.to_string(),
+            address: config.server_address(),
             router,
             pool,
         })
     }
 
-    pub async fn run_https(self) -> Result<(), anyhow::Error> {
-        let config = RustlsConfig::from_pem_file("certs/cert.pem", "certs/key.pem").await?;
+    pub async fn run_https(self, config: &AppConfig) -> Result<(), anyhow::Error> {
+        let tls_config =
+            RustlsConfig::from_pem_file(&config.tls_cert_path, &config.tls_key_path).await?;
+
         let addr: SocketAddr = self.address.parse()?;
 
         tracing::info!("Server running on {} with TLS", self.address);
 
-        axum_server::bind_rustls(addr, config)
+        axum_server::bind_rustls(addr, tls_config)
             .serve(self.router.into_make_service())
             .await?;
 
