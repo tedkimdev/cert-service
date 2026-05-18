@@ -3,8 +3,12 @@ use axum::{
     routing::{get, post},
 };
 
-use crate::app_state::AppState;
-use crate::handlers::certificates::{create_certificate, get_certificate, list_certificates};
+use crate::{
+    adapters::input::http::certificates::handler::{
+        create_certificate, get_certificate, list_certificates,
+    },
+    app_state::AppState,
+};
 
 pub fn routes() -> Router<AppState> {
     Router::new()

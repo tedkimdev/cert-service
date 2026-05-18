@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use rcgen::{
-    CertificateParams, DistinguishedName, DnType, KeyPair, SanType, string::Ia5String,
-};
+use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair, SanType, string::Ia5String};
 
-use super::{CaService, IssuedCertificate};
-use crate::errors::AppError;
+use crate::{
+    application::certificate::ports::output::ca_service::{CaService, IssuedCertificate},
+    errors::AppError,
+};
 
 pub struct DummyCaService;
 
@@ -21,7 +21,7 @@ impl CaService for DummyCaService {
         // In production, the private key would be stored in KMS/HSM
         let key_pair = KeyPair::generate()
             .map_err(|e| AppError::Internal(format!("Failed to generate key pair: {}", e)))?;
-        
+
         let mut params = CertificateParams::default();
 
         // Set the Subject CN (Common Name)

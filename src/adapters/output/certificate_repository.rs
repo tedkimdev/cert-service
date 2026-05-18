@@ -2,19 +2,10 @@ use async_trait::async_trait;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::{Certificate, InsertCertificateParam};
-
-#[async_trait]
-pub trait CertificatesRepository {
-    async fn insert(&self, req: &InsertCertificateParam) -> Result<Certificate, sqlx::Error>;
-    async fn find_by_id(&self, id: Uuid) -> Result<Certificate, sqlx::Error>;
-    async fn find_all(
-        &self,
-        cursor: Option<Uuid>,
-        limit: i64,
-    ) -> Result<(Vec<Certificate>, i64), sqlx::Error>;
-    async fn count_expiring_soon(&self) -> Result<i64, sqlx::Error>;
-}
+use crate::application::certificate::ports::output::certificate_repository::{
+    CertificatesRepository, InsertCertificateParam,
+};
+use crate::domain::certificate::Certificate;
 
 pub struct PostgresCertificateRepository {
     pool: PgPool,

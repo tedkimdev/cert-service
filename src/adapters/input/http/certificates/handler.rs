@@ -6,11 +6,11 @@ use axum::{
 use uuid::Uuid;
 
 use crate::{
-    app_state::AppState,
-    dto::{
+    adapters::input::http::dto::{
         CertificateListResponse, CertificateResponse, CreateCertificateRequest,
         IssueCertificateResponse, ListCertificatesQuery,
     },
+    app_state::AppState,
     errors::AppError,
 };
 

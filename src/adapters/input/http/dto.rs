@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::Certificate;
+use crate::domain::certificate::Certificate;
 
 // TODO: Consider renaming to request.rs/response.rs or api.rs
 // TODO: Move to infrastructure/http/dto.rs when refactoring to Clean Architecture
@@ -42,19 +42,6 @@ pub struct IssueCertificateResponse {
     pub pem: String,
 }
 
-impl From<Certificate> for CertificateResponse {
-    fn from(cert: Certificate) -> Self {
-        CertificateResponse {
-            id: cert.id,
-            subject: cert.subject,
-            issuer: cert.issuer,
-            expiration: cert.expiration,
-            san_entries: cert.san_entries,
-            created_at: cert.created_at,
-        }
-    }
-}
-
 #[derive(Debug, Serialize)]
 pub struct CertificateListResponse {
     pub data: Vec<CertificateResponse>,
@@ -68,4 +55,17 @@ pub struct CertificateListResponse {
 pub struct ListCertificatesQuery {
     pub cursor: Option<Uuid>,
     pub limit: Option<i64>,
+}
+
+impl From<Certificate> for CertificateResponse {
+    fn from(cert: Certificate) -> Self {
+        CertificateResponse {
+            id: cert.id,
+            subject: cert.subject,
+            issuer: cert.issuer,
+            expiration: cert.expiration,
+            san_entries: cert.san_entries,
+            created_at: cert.created_at,
+        }
+    }
 }

@@ -3,8 +3,6 @@ use chrono::{DateTime, Utc};
 
 use crate::errors::AppError;
 
-pub mod dummy_ca_service;
-
 pub struct IssuedCertificate {
     pub pem: String,
     pub subject: String,

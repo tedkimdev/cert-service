@@ -1,4 +1,4 @@
-use axum::{Router, routing::get};
+use axum::Router;
 use axum_server::tls_rustls::RustlsConfig;
 use sqlx::postgres::PgPoolOptions;
 use std::{net::SocketAddr, sync::Arc};
@@ -9,23 +9,29 @@ use tower_http::{
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
-    ca::dummy_ca_service::DummyCaService, repository::PostgresCertificateRepository,
-    service::CertificateServiceImpl,
+    adapters::{
+        input::http::{certificates, health},
+        output::{
+            certificate_repository::PostgresCertificateRepository, dummy_ca_service::DummyCaService,
+        },
+    },
+    application::certificate::service::CertificateServiceImpl,
 };
 
+mod adapters;
 mod app_state;
-mod ca;
-mod certificate_parser;
-mod dto;
+mod application;
+mod domain;
 mod errors;
-mod handlers;
-mod models;
-mod repository;
-mod routes;
-mod service;
 
 #[tokio::main]
 async fn main() {
+    // TODO: Move to config.rs
+    // - database max_connections
+    // - server host/port
+    // - TLS cert/key paths
+    // - RUST_LOG filter
+
     // env
     dotenvy::dotenv().ok();
 
@@ -62,9 +68,8 @@ async fn main() {
 
     // router
     let app = Router::new()
-        .route("/health", get(health_check))
-        .merge(routes::health::routes())
-        .merge(routes::certificates::routes())
+        .merge(health::routes::routes())
+        .merge(certificates::routes::routes())
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
@@ -97,8 +102,4 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .expect("Server failed");
-}
-
-async fn health_check() -> &'static str {
-    "OK"
 }

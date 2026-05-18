@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
-use crate::service::CertificateService;
+use crate::application::certificate::ports::input::certificate_service::CertificateService;
 
 #[derive(Clone)]
 pub struct AppState {

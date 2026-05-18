@@ -1,8 +1,8 @@
 use axum::{Router, routing::get};
 
 use crate::{
+    adapters::input::http::health::handler::{liveness, readiness},
     app_state::AppState,
-    handlers::health::{liveness, readiness},
 };
 
 pub fn routes() -> Router<AppState> {

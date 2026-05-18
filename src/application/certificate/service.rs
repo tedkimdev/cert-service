@@ -3,34 +3,17 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
-    ca::CaService,
-    certificate_parser::parse_pem,
-    dto::{
+    adapters::input::http::dto::{
         CertificateListResponse, CertificateResponse, CreateCertificateRequest,
         IssueCertificateResponse,
     },
+    application::certificate::{certificate_parser::parse_pem, ports::{input::certificate_service::CertificateService, output::{
+        ca_service::CaService,
+        certificate_repository::{CertificatesRepository, InsertCertificateParam},
+    }}},
     errors::AppError,
-    models::InsertCertificateParam,
-    repository::CertificatesRepository,
 };
 
-// Service trait
-#[async_trait]
-pub trait CertificateService {
-    async fn create_certificate(
-        &self,
-        req: &CreateCertificateRequest,
-    ) -> Result<IssueCertificateResponse, AppError>;
-
-    async fn get_certificate(&self, id: Uuid) -> Result<CertificateResponse, AppError>;
-    async fn list_certificates(
-        &self,
-        cursor: Option<Uuid>,
-        limit: Option<i64>,
-    ) -> Result<CertificateListResponse, AppError>;
-}
-
-// 구현체
 pub struct CertificateServiceImpl {
     repo: Arc<dyn CertificatesRepository + Send + Sync>,
     ca_service: Arc<dyn CaService + Send + Sync>,
@@ -142,13 +125,18 @@ impl CertificateService for CertificateServiceImpl {
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        application::certificate::ports::output::{
+            ca_service::IssuedCertificate, certificate_repository::CertificatesRepository,
+        },
+        domain::certificate::Certificate,
+    };
+
     use super::*;
     use async_trait::async_trait;
-    use chrono::Utc;
+    use chrono::{DateTime, Utc};
     use std::sync::Arc;
     use uuid::Uuid;
-
-    use crate::models::{Certificate, InsertCertificateParam};
 
     struct MockCertificateRepository {
         should_find: bool,
@@ -195,8 +183,31 @@ mod tests {
         }
     }
 
+    pub struct MockCaService;
+
+    #[async_trait]
+    impl CaService for MockCaService {
+        async fn issue_certificate(
+            &self,
+            subject: &str,
+            san_entries: &[String],
+            expiration: DateTime<Utc>,
+        ) -> Result<IssuedCertificate, AppError> {
+            Ok(IssuedCertificate {
+                pem: "-----BEGIN CERTIFICATE-----\nMOCK\n-----END CERTIFICATE-----".to_string(),
+                subject: subject.to_string(),
+                issuer: "Mock CA".to_string(),
+                expiration,
+                san_entries: san_entries.to_vec(),
+            })
+        }
+    }
+
     fn make_service() -> CertificateServiceImpl {
-        CertificateServiceImpl::new(Arc::new(MockCertificateRepository { should_find: false }))
+        CertificateServiceImpl::new(
+            Arc::new(MockCertificateRepository { should_find: false }),
+            Arc::new(MockCaService {}),
+        )
     }
 
     #[tokio::test]
@@ -219,16 +230,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_certificate_success() {
-        let service =
-            CertificateServiceImpl::new(Arc::new(MockCertificateRepository { should_find: true }));
+        let service = CertificateServiceImpl::new(
+            Arc::new(MockCertificateRepository { should_find: false }),
+            Arc::new(MockCaService {}),
+        );
         let result = service.get_certificate(Uuid::now_v7()).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_get_certificate_not_found() {
-        let service =
-            CertificateServiceImpl::new(Arc::new(MockCertificateRepository { should_find: false }));
+        let service = CertificateServiceImpl::new(
+            Arc::new(MockCertificateRepository { should_find: false }),
+            Arc::new(MockCaService {}),
+        );
         let result = service.get_certificate(Uuid::now_v7()).await;
         assert!(result.is_err());
     }
