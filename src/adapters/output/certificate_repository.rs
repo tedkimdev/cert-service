@@ -75,7 +75,11 @@ impl CertificatesRepository for PostgresCertificateRepository {
             id,
         )
         .fetch_one(&self.pool)
-        .await?;
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => sqlx::Error::RowNotFound,
+            _ => e,
+        })?;
 
         Ok(Certificate {
             id: cert.id,

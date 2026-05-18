@@ -18,9 +18,8 @@ pub struct ParsedCertificate {
 // - Registered IDs (GeneralName::RegisteredID)
 // TODO: Consider returning a dedicated ParseError instead of AppError
 pub fn parse_pem(pem: &str) -> Result<ParsedCertificate, AppError> {
-    let (_, pem_obj) = parse_x509_pem(pem.as_bytes()).map_err(|_| {
-        AppError::InvalidPem("Failed to parse PEM".to_string())
-    })?;
+    let (_, pem_obj) = parse_x509_pem(pem.as_bytes())
+        .map_err(|_| AppError::InvalidPem("Failed to parse PEM".to_string()))?;
     let (_, cert) = parse_x509_certificate(&pem_obj.contents)
         .map_err(|_| AppError::Internal("Failed to parse X509 certificate".to_string()))?;
 

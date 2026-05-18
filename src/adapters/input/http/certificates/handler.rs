@@ -24,8 +24,11 @@ pub async fn create_certificate(
 
 pub async fn get_certificate(
     State(state): State<AppState>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<String>,
 ) -> Result<Json<CertificateResponse>, AppError> {
+    let id = Uuid::parse_str(&id)
+        .map_err(|_| AppError::Validation(format!("Invalid UUID format: {}", id)))?;
+
     let cert = state.certificate_service.get_certificate(id).await?;
     Ok(Json(cert))
 }

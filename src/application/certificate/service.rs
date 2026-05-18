@@ -7,10 +7,16 @@ use crate::{
         CertificateListResponse, CertificateResponse, CreateCertificateRequest,
         IssueCertificateResponse,
     },
-    application::certificate::{certificate_parser::parse_pem, ports::{input::certificate_service::CertificateService, output::{
-        ca_service::CaService,
-        certificate_repository::{CertificatesRepository, InsertCertificateParam},
-    }}},
+    application::certificate::{
+        certificate_parser::parse_pem,
+        ports::{
+            input::certificate_service::CertificateService,
+            output::{
+                ca_service::CaService,
+                certificate_repository::{CertificatesRepository, InsertCertificateParam},
+            },
+        },
+    },
     errors::AppError,
 };
 
@@ -88,7 +94,11 @@ impl CertificateService for CertificateServiceImpl {
     }
 
     async fn get_certificate(&self, id: Uuid) -> Result<CertificateResponse, AppError> {
-        let cert = self.repo.find_by_id(id).await?;
+        let cert = self.repo.find_by_id(id).await
+            .map_err(|e| match e {
+            sqlx::Error::RowNotFound => AppError::NotFound,
+            _ => AppError::Database(e),
+        })?;
         Ok(cert.into())
     }
 
