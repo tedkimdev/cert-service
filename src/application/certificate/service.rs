@@ -94,8 +94,7 @@ impl CertificateService for CertificateServiceImpl {
     }
 
     async fn get_certificate(&self, id: Uuid) -> Result<CertificateResponse, AppError> {
-        let cert = self.repo.find_by_id(id).await
-            .map_err(|e| match e {
+        let cert = self.repo.find_by_id(id).await.map_err(|e| match e {
             sqlx::Error::RowNotFound => AppError::NotFound,
             _ => AppError::Database(e),
         })?;
@@ -241,7 +240,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_certificate_success() {
         let service = CertificateServiceImpl::new(
-            Arc::new(MockCertificateRepository { should_find: false }),
+            Arc::new(MockCertificateRepository { should_find: true }),
             Arc::new(MockCaService {}),
         );
         let result = service.get_certificate(Uuid::now_v7()).await;
