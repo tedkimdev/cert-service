@@ -6,4 +6,39 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: cert_service
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cert_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://postgres:password@db:5432/cert_service
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 3000
+      RUST_LOG: info,tower_http=debug,sqlx=warn
+      TLS_CERT_PATH: certs/cert.pem
+      TLS_KEY_PATH: certs/key.pem
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/certs:/app/certs
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://backend:3000
+    environment:
+      NEXT_PUBLIC_API_URL: https://backend:3000
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    ports:
+      - "3001:3001"
+    depends_on:
+      - backend

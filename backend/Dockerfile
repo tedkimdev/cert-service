@@ -12,7 +12,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 ENV SQLX_OFFLINE=true
-RUN cargo build --release --bin cert-service-practice
+RUN cargo build --release --bin cert-service
 
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib
 RUN useradd --system --uid 10001 appuser
 
 WORKDIR /app
-COPY --from=builder /app/target/release/cert-service-practice /app/cert-service
+COPY --from=builder /app/target/release/cert-service /app/cert-service
 COPY --from=builder /app/migrations /app/migrations
 COPY certs /app/certs
 
