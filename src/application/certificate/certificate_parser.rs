@@ -2,7 +2,6 @@ use chrono::{DateTime, TimeZone, Utc};
 use x509_parser::prelude::*;
 
 use crate::errors::AppError;
-use crate::errors::certificate::CertificateError;
 
 pub struct ParsedCertificate {
     pub subject: String,
@@ -11,12 +10,16 @@ pub struct ParsedCertificate {
     pub san_entries: Vec<String>,
 }
 
-// TODO: parse partern
+// TODO: Support other SAN entry types in addition to DNS names:
+// - IP addresses (GeneralName::IPAddress)
+// - Email addresses (GeneralName::RFC822Name)
+// - URIs (GeneralName::URI)
+// - Directory names (GeneralName::DirectoryName)
+// - Registered IDs (GeneralName::RegisteredID)
+// TODO: Consider returning a dedicated ParseError instead of AppError
 pub fn parse_pem(pem: &str) -> Result<ParsedCertificate, AppError> {
     let (_, pem_obj) = parse_x509_pem(pem.as_bytes()).map_err(|_| {
-        AppError::Certificate(CertificateError::InvalidPem(
-            "Failed to parse PEM".to_string(),
-        ))
+        AppError::InvalidPem("Failed to parse PEM".to_string())
     })?;
     let (_, cert) = parse_x509_certificate(&pem_obj.contents)
         .map_err(|_| AppError::Internal("Failed to parse X509 certificate".to_string()))?;
@@ -112,7 +115,7 @@ TKlk2A==
         let result = parse_pem(TEST_PEM);
         assert!(result.is_ok());
 
-        let parsed = result.unwrap();
+        let parsed: ParsedCertificate = result.unwrap();
         assert!(!parsed.san_entries.is_empty());
     }
 }

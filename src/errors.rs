@@ -1,56 +1,41 @@
 use axum::{
-    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
+    Json,
 };
-use serde_json::json;
+use serde::Serialize;
+use thiserror::Error;
 
-use crate::errors::certificate::CertificateError;
-
-pub mod certificate;
-
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum AppError {
-    Certificate(CertificateError),
+    #[error("resource not found")]
+    NotFound,
+    #[error("validation failed: {0}")]
+    Validation(String),
+    #[error("invalid pem: {0}")]
+    InvalidPem(String),
+    #[error("database error")]
+    Database(#[from] sqlx::Error),
+    #[error("internal server error: {0}")]
     Internal(String),
-    Database(sqlx::Error),
 }
 
-impl From<sqlx::Error> for AppError {
-    fn from(e: sqlx::Error) -> Self {
-        match e {
-            _ => AppError::Database(e),
-        }
-    }
+#[derive(Serialize)]
+struct ErrorBody {
+    error: &'static str,
+    message: String,
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, message) = match self {
-            AppError::Certificate(e) => match e {
-                CertificateError::NotFound(id) => (
-                    StatusCode::NOT_FOUND,
-                    format!("Certificate not foudn: {}", id),
-                ),
-                CertificateError::AlreadyExpired => (
-                    StatusCode::BAD_REQUEST,
-                    "Certificate is already expired".to_string(),
-                ),
-                CertificateError::InvalidSan(san) => (
-                    StatusCode::BAD_REQUEST,
-                    format!("Invalid SAN entry: {}", san),
-                ),
-                CertificateError::InvalidPem(msg) => {
-                    (StatusCode::BAD_REQUEST, format!("Invalid PEM: {}", msg))
-                }
-            },
-            AppError::Database(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            ),
-            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+        let (status, code, message) = match &self {
+            AppError::NotFound => (StatusCode::NOT_FOUND, "not_found", self.to_string()),
+            AppError::Validation(msg) => (StatusCode::BAD_REQUEST, "validation_error", msg.clone()),
+            AppError::InvalidPem(msg) => (StatusCode::BAD_REQUEST, "invalid_pem", msg.clone()),
+            AppError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "database_error", self.to_string()),
+            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error", msg.clone()),
         };
 
-        (status, Json(json!({ "error": message }))).into_response()
+        (status, Json(ErrorBody { error: code, message })).into_response()
     }
 }
