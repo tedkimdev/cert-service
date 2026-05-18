@@ -1,4 +1,4 @@
-.PHONY: fmt lint test run check migrate db build run
+.PHONY: fmt lint test run check migrate db build run certs
 
 fmt:
 	cargo fmt --all
@@ -22,3 +22,11 @@ build: migrate
 
 run: migrate
 	cargo run
+
+certs:
+	mkdir -p certs
+	openssl req -x509 -newkey rsa:4096 \
+		-keyout certs/key.pem \
+		-out certs/cert.pem \
+		-days 365 -nodes \
+		-subj "/CN=localhost"
