@@ -1,6 +1,6 @@
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
-use cert_service_practice::{app::Application, config::AppConfig};
+use cert_service::{app::Application, config::AppConfig};
 
 #[tokio::main]
 async fn main() {

@@ -1,4 +1,4 @@
-use cert_service_practice::app::Application;
+use cert_service::app::Application;
 
 pub struct TestApp {
     pub address: String,

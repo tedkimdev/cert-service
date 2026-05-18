@@ -101,6 +101,22 @@ PostgreSQL
 
 ## 5. API Design
 
+## API Documentation
+
+### OpenAPI / Swagger UI
+
+> 🚧 Not implemented in this assessment.
+> 
+> In production, we would use `utoipa` crate to generate OpenAPI documentation:
+> - Auto-generated from handler annotations
+> - Swagger UI at `/swagger-ui`
+> - ReDoc at `/redoc`
+>
+> ```bash
+> cargo add utoipa --features axum
+> cargo add utoipa-swagger-ui --features axum
+> ```
+
 ### Endpoints
 
 | Method | Path | Description |

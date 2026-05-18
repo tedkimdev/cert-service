@@ -15,7 +15,7 @@ migrate:
 	cargo sqlx migrate run
 
 db:
-	docker compose up -d
+	docker compose -f ../docker-compose.yml up -d
 
 build: migrate
 	cargo build

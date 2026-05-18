@@ -278,7 +278,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cert-service-practice"
+name = "cert-service"
 version = "0.1.0"
 dependencies = [
  "anyhow",
