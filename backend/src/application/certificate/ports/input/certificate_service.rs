@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::adapters::input::http::dto::{
+use crate::adapters::input::http::certificates::dto::{
     CertificateListResponse, CertificateResponse, CreateCertificateRequest,
     IssueCertificateResponse,
 };

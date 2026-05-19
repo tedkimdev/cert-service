@@ -18,10 +18,10 @@ db:
 	docker compose -f ../docker-compose.yml up -d
 
 build: migrate
-	cargo build
+	SQLX_OFFLINE=true cargo build
 
 run: migrate
-	cargo run
+	SQLX_OFFLINE=true cargo run
 
 certs:
 	mkdir -p certs

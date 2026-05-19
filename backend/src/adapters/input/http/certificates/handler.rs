@@ -6,7 +6,7 @@ use axum::{
 use uuid::Uuid;
 
 use crate::{
-    adapters::input::http::dto::{
+    adapters::input::http::certificates::dto::{
         CertificateListResponse, CertificateResponse, CreateCertificateRequest,
         IssueCertificateResponse, ListCertificatesQuery,
     },

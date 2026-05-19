@@ -4,9 +4,6 @@ use uuid::Uuid;
 
 use crate::domain::certificate::Certificate;
 
-// TODO: Consider renaming to request.rs/response.rs or api.rs
-// TODO: Move to infrastructure/http/dto.rs when refactoring to Clean Architecture
-
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum CreateCertificateRequest {
