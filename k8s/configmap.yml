@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cert-service-config
+  namespace: cert-service
+data:
+  RUST_LOG: "info,tower_http=debug,sqlx=warn"
+  SERVER_HOST: "0.0.0.0"
+  SERVER_PORT: "3000"
+  DB_MAX_CONNECTIONS: "5"

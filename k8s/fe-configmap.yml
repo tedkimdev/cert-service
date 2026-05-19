@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nextjs-config
+  namespace: cert-service
+data:
+  NEXT_PUBLIC_API_URL: "https://api.cert.com"
+  NODE_ENV: "production"
+  PORT: "3001"

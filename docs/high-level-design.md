@@ -1,168 +1,104 @@
 # Certificate Issuance and Inventory Microservice
 ## High-Level Design
 
----
-
-## 1. Overview
-## 2. Functional Requirements
-## 3. Non-Functional Requirements
-## 4. System Architecture
-   - Component diagram
-   - Component responsibilities
-   - Technology choices & rationale
-## 5. API Design (high-level)
-## 6. Data Storage Strategy
-## 7. Security Architecture
-   - TLS/mTLS strategy
-   - Key management
-## 8. Kubernetes Infrastructure
-   - High-level component overview
-   - Scaling strategy
-## 9. Observability Strategy
-## 10. Trade-offs & Design Decisions
-
----
-
-## 1. Overview
-
-A secure, cloud-native microservice for issuing and managing X.509 certificates for Non-Human Identities (NHI) — AI agents, service accounts, and machine identities within an enterprise.
-
-### Problem Statement
-
-In modern microservice environments, services need to prove their identity to each other. X.509 certificates are the foundation of this trust. Without a centralized system to manage these certificates:
-
-- Certificates expire unnoticed → service outages
-- No visibility into what certificates exist
-- Manual rotation is error-prone at scale
-- No audit trail
-
-### Solution
-
-A centralized certificate issuance and inventory microservice that:
-- Issues and stores certificate metadata
-- Provides visibility into all certificates
-- Monitors expiration
-- Integrates with real PKI infrastructure (Vault, cert-manager) in production
+## 1. Functional Requirements
+## 2. Non-Functional Requirements
+## 3. High-level Architecture
+   - Rust microservice design
+   - API design & certificate lifecycle flows
+   - PostgreSQL schema & indexing strategy
+   - Kubernetes components
+   - Container image design & security
+## 4. TLS/mTLS & Certificate Flow
+   - How mTLS works in microservices
+   - Certificate rotation
+   - HSM/KMS for key storage
+   - Certificate issuance workflow (CSR → signing → storage)
+## 5. Next.js Integration
+   - API consumption patterns
+   - SSR vs CSR tradeoffs
+   - Secure cookie/session/token management
+## 6. Observability
+   - Logging, metrics, tracing
+   - Kubernetes probes
+   - Rust performance tuning
+## 7. Trade-offs & Design Decisions
 
 ---
 
-## 2. Functional Requirements
+## 1. Functional Requirements
 
 1. Issue X.509 certificates (Dummy CA)
 2. Store certificate metadata in PostgreSQL
 3. Retrieve certificate metadata by ID
-4. List certificates with keyset pagination
+4. List certificates with pagination (keyset pagination)
 5. Parse PEM files and auto-register certificate metadata
 6. Expose secure API for Next.js frontend
 7. Monitor certificate expiration (expiring within 30 days)
+8. Provide audit logs for all certificate operations
 
 ---
 
-## 3. Non-Functional Requirements
+## 2. Non-Functional Requirements
 
 | Requirement | Approach |
 |---|---|
 | Security | TLS, mTLS (Istio), HSM/KMS for key storage |
 | Scalability | Kubernetes HPA autoscaling |
 | Availability | Health probes, graceful shutdown, multiple replicas |
-| Observability | Structured logging, metrics, tracing, request ID |
+| Observability | Structured logging, metrics, tracing, request ID, audit logs |
 | Performance | Async Rust (Tokio), connection pooling, UUID v7 |
 | Containerization | Multi-stage Docker, non-root user |
 
 ---
 
-## 4. System Architecture
+## 3. High-level Architecture
 
 > 📊 **Diagram:** System architecture (Excalidraw)
-![alt text](image-1.png)
+![alt text](images/system-architecture.png)
 
-### Production Architecture
-```
-Browser (Admin)
-↓ HTTPS
-Ingress (TLS termination)
-├── app.example.com → Next.js
-└── api.example.com → cert-service
-↓
-┌─────────────────────┐
-│   cert-service      │
-│   (Rust/Axum)       │
-└─────────────────────┘
-↓           ↓
-PostgreSQL    Vault PKI
-(metadata)  (real certs)
-↓
-cert-manager
-↓
-Kubernetes Secrets
-↓
-Istio sidecar
-↓
-Service A ←mTLS→ Service B
-```
+> 📊 **Diagram:** Kubernetes Architecture
+![alt text](images/kubernetes-architecture.png)
 
-### Component Responsibilities
+### 3.1 Rust Microservice Design
+**Async Runtime:** Tokio
 
-| Component | Responsibility |
+**Library Choices:**
+
+| Library | Purpose |
 |---|---|
-| Next.js | Admin dashboard — SSR, certificate inventory UI |
-| cert-service | Certificate issuance, metadata storage, API |
-| PostgreSQL | Certificate metadata persistence |
-| Vault PKI | Real certificate issuance, Private Key management |
-| cert-manager | Certificate rotation automation |
-| Istio | mTLS enforcement, sidecar injection |
-| Ingress | TLS termination, external routing |
-| ArgoCD | GitOps-based deployment management |
+| Axum | HTTP framework — ergonomic routing, Tower middleware |
+| SQLx | Async PostgreSQL — compile-time query verification |
+| Tokio | Async runtime |
+| rcgen | X.509 certificate generation (Dummy CA) |
+| x509-parser | PEM parsing and certificate metadata extraction |
+| tracing | Structured logging |
+| tower-http | Middleware (request ID, tracing) |
+| thiserror | Error handling |
 
-### In This Assessment
-```
-Browser
-↓ HTTPS (self-signed)
-Next.js (SSR + SWR)
-↓ HTTPS
-cert-service (Rust/Axum)
-↓
-PostgreSQL
-```
+**Architecture Pattern:** Hexagonal Architecture (Ports & Adapters)
 
-> Vault PKI, cert-manager, and Istio are documented but not implemented. The assessment focuses on the certificate metadata management layer.
+**API Boundaries:**
 
----
+| Layer | Responsibility | Interface |
+|---|---|---|
+| HTTP Layer | Accept HTTP requests, return JSON responses | `CreateCertificateRequest`, `CertificateResponse` |
+| Application Layer | Business logic, use cases | `CertificateService` trait |
+| DB Layer | Certificate metadata persistence | `CertificatesRepository` trait |
 
-## 5. Technology Choices & Rationale
+> Each layer communicates only through defined traits.
+> Outbound adapters (DB, CA) can be swapped without changing business logic.
+> e.g. Replace DummyCaService with VaultCaService in production.
 
-### Backend — Rust (Axum)
+### 3.2 API Design & Certificate Lifecycle Flows
 
-| Choice | Rationale |
-|---|---|
-| Rust | Memory safety, performance, no GC pauses — ideal for security-critical systems |
-| Axum | Ergonomic routing, Tower middleware ecosystem, async-native |
-| SQLx | Compile-time query verification, async PostgreSQL |
-| Tokio | Industry-standard async runtime for Rust |
-| UUID v7 | Time-ordered IDs, better DB index performance than UUID v4 |
+**OpenAPI / Swagger UI:**
 
-### Frontend — Next.js
+> 🚧 Not implemented in this assessment.
+> In production, would use `utoipa` crate to auto-generate OpenAPI documentation with Swagger UI at `/swagger-ui`.
 
-| Choice | Rationale |
-|---|---|
-| Next.js | SSR for fast initial load and SEO, TypeScript strict mode |
-| SWR | Client-side data revalidation without full page reload |
-| SSR + SWR | Best of both worlds — fast initial render + fresh data |
 
-### Infrastructure
-
-| Choice | Rationale |
-|---|---|
-| PostgreSQL | ACID compliant, reliable — deployed as AWS RDS managed service |
-| HashiCorp Vault | External PKI — independent from Kubernetes cluster for security |
-| Kubernetes | Industry standard for container orchestration |
-| Istio | Automatic mTLS, observability, traffic management |
-| ArgoCD | GitOps — Git as single source of truth |
-| Docker multi-stage | Minimal runtime image, faster deploys |
-
----
-
-## 6. API Design
+**Endpoints:**
 
 | Method | Path | Description |
 |---|---|---|
@@ -172,119 +108,404 @@ PostgreSQL
 | GET | /health/live | Liveness probe |
 | GET | /health/ready | Readiness probe |
 
----
+> 📊 **Diagram:** Certificate Lifecycle Flow (Excalidraw)
+![alt text](images/certificate-lifecycle-flow.png)
 
-## 7. Data Storage Strategy
+### 3.3 PostgreSQL Schema & Indexing Strategy
 
-### Why PostgreSQL?
-- ACID compliance — critical for certificate metadata integrity
-- `TIMESTAMPTZ` for timezone-aware expiration dates
-- `ARRAY_AGG` for efficient SAN entry joins
-- Proven reliability for financial/security data
+> 📊 **Diagram:** ERD (Excalidraw)
+![alt text](images/erd.png)
 
-### Why AWS RDS over StatefulSet?
+**Indexing Strategy:**
 
-| | AWS RDS | StatefulSet |
-|---|---|---|
-| Operations | Managed | Manual |
-| Backups | Automatic | Manual |
-| Failover | Automatic (Multi-AZ) | Complex setup |
-| Upgrades | Automatic | Manual |
-| Cost | Higher | Lower |
+| Index | Reason |
+|---|---|
+| `idx_certificates_expiration` | Expiration monitoring queries |
+| `idx_certificates_created_at` | Time-range queries |
+| `idx_san_entries_certificate_id` | SAN lookup by certificate |
+| `idx_audit_logs_resource_id` | Audit log queries by certificate |
 
-> For a startup like Arkion, AWS RDS reduces operational overhead and lets the team focus on the core product.
+> 🚧 Indexes are documented here but not added to the migration files in this assessment. In production, these indexes would be added via a separate migration.
 
-### Schema Overview
-
-```
-certificates
-├── id (UUID v7, PK)
-├── subject
-├── issuer
-├── expiration (TIMESTAMPTZ)
-└── created_at (TIMESTAMPTZ)
-san_entries
-├── id (UUID v7, PK)
-├── certificate_id (FK → certificates)
-└── value
-```
-
-### Key Design Decisions
+**Key Design Decisions:**
 
 | Decision | Reason |
 |---|---|
-| UUID v7 | Time-ordered, better B-tree index performance |
+| UUID v7 | Time-ordered, better B-tree index performance than UUID v4 |
+| TIMESTAMPTZ | Timezone-aware — critical for certificate expiration |
 | SAN as separate table | Normalized, enables individual SAN querying |
-| Keyset pagination | More efficient than offset for large datasets |
 | JOIN + ARRAY_AGG | Avoids N+1 queries for SAN entries |
+| Keyset pagination | More efficient than offset for large datasets |
 
----
+#### Audit Log Storage Options
 
-## 8. Security Architecture
-
-> 📊 **Diagram:** Security layers (Excalidraw)
-
-### External Communication (Browser → Ingress)
-- TLS with CA-signed certificate
-- Ingress handles TLS termination
-
-### Internal Communication (Service → Service)
-- mTLS enforced by Istio in STRICT mode
-- All service-to-service traffic encrypted and authenticated
-- No service can communicate without a valid certificate
-
-### Key Management
-- Development: local files (certs/)
-- Production: AWS KMS or HashiCorp Vault
-- Private Keys never stored in plaintext or database
-
-### In This Assessment
-- Self-signed TLS certificate (axum-server + rustls)
-- mTLS documented — would use Istio in production
-- Local key storage — would use KMS in production
-
----
-
-## 9. Scalability & Availability
-
-### Horizontal Scaling
-- Kubernetes HPA scales based on CPU/memory
-- Stateless service — any replica can handle any request
-- PostgreSQL connection pooling (SQLx) prevents connection exhaustion
-
-### High Availability
-- Minimum 2 replicas in production
-- Liveness probe → restart unhealthy pods
-- Readiness probe → remove unready pods from load balancer
-- Graceful shutdown → finish in-flight requests before stopping
-
-### Deployment Strategy
-- Rolling updates — zero downtime deployments
-- ArgoCD App of Apps — GitOps-based, easy rollback
-- Multi-stage Docker — minimal image size, faster deploys
-
----
-
-## 10. Observability Strategy
-
-| Pillar | In This Assessment | In Production |
+| Option | Description | Trade-off |
 |---|---|---|
-| Logging | tracing + tracing-subscriber | ELK Stack / Datadog |
-| Metrics | Not implemented | Prometheus + Grafana |
-| Tracing | Request ID (tower-http) | OpenTelemetry + Jaeger |
-| Probes | /health/live, /health/ready | Same + alerting |
+| PostgreSQL | Same DB as metadata | Simple, ACID, but adds load to main DB |
+| Elasticsearch | Full-text search, analytics | Better for log search and dashboards |
+| DynamoDB | AWS managed, high scale | High throughput, but vendor lock-in |
+| Cassandra | Time-series, high write | Very high scale, complex ops |
+
+> Audit logs are **append-only** and time-series in nature — NoSQL or dedicated log storage is often a better fit than relational DB in production.
+
+**Recommended production approach:**
+```
+cert-service → Kafka → Elasticsearch (audit logs + search)
+→ PostgreSQL (certificate metadata only)
+```
+
+#### Audit Log Implementation Strategy
+
+| Option | Approach | Trade-off |
+|---|---|---|
+| Option A | Synchronous — same transaction | Guaranteed consistency, adds latency |
+| Option B | Background — `tokio::spawn` | Non-blocking, may be lost on crash |
+| Option C | Message Queue (Kafka) | High resilience, complex setup |
+
+> In this assessment, audit logs are documented but not implemented.
+> In production, Option A would be preferred for strict compliance, Option B for better performance.
+
+### 3.4 Kubernetes Components
+
+```
+cert-service Namespace
+  ├── Deployment (2 replicas)
+  │     ├── Pod 1 (cert-service container)
+  │     └── Pod 2 (cert-service container)
+  ├── Service (ClusterIP)
+  ├── ConfigMap
+  ├── Secret
+  └── HPA
+
+nextjs Namespace
+  ├── Deployment (2 replicas)
+  │     ├── Pod 1 (nextjs container)
+  │     └── Pod 2 (nextjs container)
+  ├── Service (ClusterIP)
+  └── ConfigMap
+
+Ingress (TLS termination)
+  ├── api.cert.com → cert-service
+  └── app.cert.com → nextjs
+
+External
+  └── AWS RDS (PostgreSQL)
+```
+
+| Component | Description |
+|---|---|
+| Deployment | cert-service (min 2 replicas), Next.js |
+| ConfigMap | Non-sensitive config (RUST_LOG, SERVER_PORT) |
+| Secret | Sensitive config (DATABASE_URL, TLS_CERT, TLS_KEY) |
+| Service | ClusterIP for internal routing |
+| Ingress | TLS termination, external routing |
+| HPA | Autoscaling based on CPU (70%) / Memory (80%) |
+| Istio | Service mesh — automatic mTLS, sidecar injection |
+| cert-manager | Automated certificate rotation |
+| ArgoCD | GitOps — App of Apps pattern |
+
+### 3.5 Container Image Design & Security
+
+**Multi-stage build:**
+
+| Stage | Base Image | Purpose |
+|---|---|---|
+| builder | rust:alpine | Compile binary with cargo-chef for layer caching |
+| runtime | debian:bookworm-slim | Minimal runtime, no build tools |
+
+**Why this works well:**
+- Dependency compilation is cached separately from application source — faster CI/CD builds
+- Runtime image does not include the Rust toolchain — smaller image, reduced attack surface
+- `cargo-chef` improves layer caching when dependencies change less often than source files
+- Same image can run locally, in CI, and in production
+
+**Security considerations:**
+
+| Concern | Implementation |
+|---|---|
+| Non-root user | `useradd --system --uid 10001 appuser` |
+| Minimal attack surface | `debian:bookworm-slim` — only essential packages |
+| No secrets in image | Injected via environment variables at runtime |
+| Offline SQLx | `SQLX_OFFLINE=true` — no DB connection at build time |
+
+> In production, add image vulnerability scanning in CI/CD pipeline.
 
 ---
 
-## 11. Trade-offs & Design Decisions
+## 4. TLS/mTLS & Certificate Flow
+
+### 4.1 How mTLS Works in Microservices
+
+**Regular TLS vs mTLS:**
+
+| | TLS | mTLS |
+|---|---|---|
+| Server proves identity | ✅ | ✅ |
+| Client proves identity | ❌ | ✅ |
+| Use case | Browser → Server | Service → Service |
+
+**In Kubernetes with Istio:**  
+
+![alt text](images/istio-mtls-flow.png)
+
+- App code communicates over plain HTTP internally
+- Istio sidecar intercepts and wraps traffic with mTLS
+- No application code changes required
+
+**Implementation Options:**
+
+| | Option A (Manual) | Option B (Istio) |
+|---|---|---|
+| Implementation | Per service | Automatic |
+| Certificate management | Manual | Automatic |
+| Rotation | Manual | Every 24h |
+| Code changes | Required | None |
+
+> I choose Option B (Istio) for production.
+
+### 4.2 Certificate Rotation
+
+> 📊 **Diagram:** Certificate Rotation Flow (Excalidraw)
+![alt text](images/certificate-rotation-flow.png)
+
+- cert-manager monitors expiration (1/3 lifespan remaining)
+- Generates new key pair
+- Requests new certificate from Vault PKI
+- Stores in Kubernetes Secret
+- Istio injects new certificate (zero downtime)
+- Revokes old certificate
+
+> Rotation generates a completely new key pair — not a renewal of the existing key.
+
+### 4.3 HSM/KMS for Key Storage
+
+| Option | Description | Use Case |
+|---|---|---|
+| AWS KMS | Cloud-managed key service | Most production systems |
+| HashiCorp Vault | Self-hosted secrets management | Multi-cloud, high security |
+| HSM | Physical hardware device | Banks, government |
+| Local file | Stored on disk | Development only |
+
+> Private Keys must never be stored in plaintext or in a database.
+> In this assessment: local files. In production: AWS KMS or HashiCorp Vault.
+
+**How to integrate HSM/KMS for key storage: **
+```
+cert-manager
+↓ Generates CSR
+↓ Sends to Vault PKI
+Vault PKI
+↓ Uses AWS KMS as signing backend
+↓ Private Key never leaves KMS boundary
+↓ Returns signed certificate
+cert-manager
+↓ Stores certificate in Kubernetes Secret
+↓ Istio injects into pods
+```
+
+> cert-manager handles the interaction with Vault PKI, which uses AWS KMS as its signing backend.
+> cert-manager requires a `ClusterIssuer` configuration pointing to Vault PKI.
+
+### 4.4 Certificate Issuance Workflow (CSR → Signing → Storage)
+
+**In This Assessment (Dummy CA):**
+```
+Client
+↓ POST /certificates (JSON or PEM)
+cert-service
+↓ Parse & validate
+↓ Dummy CA (rcgen) → generate X.509 certificate
+↓ Store metadata in PostgreSQL
+↓ Return certificate (PEM) + metadata
+```
+
+**In Production (Real PKI):**
+
+Scenario A — Manual (User/External App Request)
+```
+Client (User/Server)
+↓ Generate key pair INSIDE KMS/HSM & Create CSR
+↓ POST /certificates (CSR)
+cert-service
+↓ Send CSR to HashiCorp Vault PKI
+↓ Vault signs the certificate
+↓ Store metadata in PostgreSQL & Return signed certificate
+```
+
+Scenario B — Automated (Internal Mesh Infrastructure)
+```
+cert-manager
+↓ Generate key pair locally inside K8s & Create CSR
+↓ Submit CSR to Vault PKI (via ClusterIssuer)
+Vault PKI
+↓ Sign certificate & Return to cert-manager
+cert-manager
+↓ Store in Kubernetes Secret
+↓ Istio Envoy hot-reloads it (Zero Downtime)
+```
+
+---
+
+## 5. Next.js Integration
+
+### 5.1 API Consumption Patterns
+
+**SSR + SWR Hybrid Pattern:**
+
+```
+Browser
+↓ Request /inventory
+Next.js Server
+↓ fetch https://cert-service/certificates (SSR)
+↓ Render HTML with initial data
+↓ Return complete HTML to browser
+Browser
+↓ Hydration (React attaches to HTML)
+↓ SWR activates → fetch /api/certificates (API Route proxy)
+↓ Background revalidation
+```
+
+**Why this pattern:**
+- SSR → fast initial load, SEO friendly
+- SWR → keeps data fresh without full page reload
+- API Route proxy → avoids self-signed cert issues in browser
+
+### 5.2 SSR vs CSR Tradeoffs
+
+| | SSR | CSR |
+|---|---|---|
+| Initial load | Fast (HTML ready) | Slow (blank screen) |
+| SEO | Good | Poor |
+| Data freshness | On request | SWR auto-revalidates |
+| Sensitive data | Safe (server-side) | Exposed to browser |
+| Use case | /inventory page | Real-time updates |
+
+### 5.3 Secure Cookie/Session/Token Management
+
+**In This Assessment:**
+- No authentication implemented
+- Service-to-service authentication handled by mTLS (Istio)
+
+**In Production:**
+
+| Concern | Recommendation |
+|---|---|
+| Authentication | JWT or session-based auth |
+| Token storage | HttpOnly cookies (not localStorage) |
+| CSRF protection | SameSite cookie attribute |
+| Session management | Short-lived JWTs + Refresh Token in DB |
+| Service-to-service | mTLS via Istio (no tokens needed) |
+
+**Why HttpOnly cookies over localStorage:**
+- localStorage is accessible via JavaScript → vulnerable to XSS
+- HttpOnly cookies cannot be read by JavaScript → XSS safe
+- Add `SameSite=Strict` for CSRF protection
+- Add `Secure` flag for HTTPS-only transmission
+
+**JWT Flow in Production:**
+```
+Login
+↓ Issue Access Token (15min) + Refresh Token (30days)
+↓ Store both in HttpOnly cookies
+Access Token expires
+↓ POST /auth/refresh (Refresh Token)
+↓ Verify Refresh Token in DB
+↓ Issue new Access Token
+Logout
+↓ Delete Refresh Token from DB (immediate revocation)
+```
+
+> Internal service-to-service communication is secured by mTLS via Istio.
+> JWT tokens are only needed for human users accessing the Next.js frontend.
+
+---
+
+## 6. Observability
+
+### 6.1 Logging, Metrics, Tracing
+
+**Logging (In This Assessment):**
+- Structured logging with `tracing` crate
+- Log levels: `info` (app), `debug` (tower_http), `warn` (sqlx)
+- Every request tagged with `x-request-id` for correlation
+
+| Target | Level | Reason |
+|---|---|---|
+| Application | info | General operational logs |
+| tower_http | debug | Request/response logs |
+| sqlx | warn | Avoid excessive query logs |
+
+**Request ID Correlation:**
+```
+INFO request{method=POST uri=/certificates request_id=019e2d0b-...}: started
+INFO request{method=POST uri=/certificates request_id=019e2d0b-...}: finished latency=56ms status=201
+```
+
+**Metrics (In Production):**
+- Prometheus scrapes `/metrics` endpoint
+- Grafana dashboards + alerting
+
+| Metric | Description |
+|---|---|
+| `http_requests_total` | Total requests by method, path, status |
+| `http_request_duration_seconds` | Request latency histogram |
+| `certificates_total` | Total certificates issued |
+| `certificates_expiring_soon` | Certificates expiring within 30 days |
+| `db_pool_connections` | Connection pool usage |
+
+**Tracing (In Production):**
+- OpenTelemetry + Jaeger for distributed tracing
+- Trace propagated across Next.js → cert-service → PostgreSQL
+- Answers: which service is slow? where did the request fail?
+
+**Production Observability Stack Options:**
+
+| | Grafana Stack | Datadog |
+|---|---|---|
+| Cost | Free (OSS) | High |
+| Operations | Self-managed | Fully managed |
+| Vendor lock-in | None | Yes |
+| Setup complexity | High | Low |
+| Use case | Scale, multi-cloud | Startup, fast setup |
+
+> Start with Datadog for speed.
+> Migrate to Grafana Stack (Loki + Tempo + Prometheus) as scale grows.
+
+### 6.2 Kubernetes Probes
+
+**Implemented in This Assessment:**
+
+| Probe | Endpoint | Question | Action on failure |
+|---|---|---|---|
+| Liveness | /health/live | Is the service alive? | Restart container |
+| Readiness | /health/ready | Is DB connected? | Remove from load balancer |
+
+### 6.3 Rust Performance Tuning
+
+| Technique | Description |
+|---|---|
+| Async runtime (Tokio) | Non-blocking I/O, handles thousands of concurrent connections |
+| Connection pooling (SQLx) | Reuse DB connections, avoid connection overhead |
+| UUID v7 | Time-ordered IDs reduce B-tree page splits |
+| JOIN + ARRAY_AGG | Single query instead of N+1 queries for SAN entries |
+| `--release` build | Optimized binary, removes debug symbols |
+| `cargo-chef` | Docker layer caching for faster CI/CD builds |
+
+---
+
+## 7. Trade-offs & Design Decisions
 
 | Decision | Chosen | Alternative | Reason |
 |---|---|---|---|
-| Pagination | Keyset | Offset | Better performance at scale |
-| ID type | UUID v7 | UUID v4 / auto-increment | Time-ordered, better index performance |
-| SAN storage | Separate table | PostgreSQL array | Normalized, queryable |
-| mTLS | Istio (documented) | Manual implementation | Reduces complexity, automatic rotation |
+| Architecture | Hexagonal (Ports & Adapters) | Layered | Clear separation of inbound/outbound adapters, easy to swap implementations |
+| Pagination | Keyset | Offset | Better performance at scale, no duplicate/missing records |
+| ID type | UUID v7 | UUID v4 / auto-increment | Time-ordered, better B-tree index performance |
+| SAN storage | Separate table | PostgreSQL array | Normalized, enables individual SAN querying |
+| mTLS | Istio (documented) | Manual implementation | Automatic rotation, no code changes, sidecar pattern |
 | TLS termination | Ingress | App-level | Industry standard, separation of concerns |
-| Frontend rendering | SSR + SWR | CSR only | Fast initial load + fresh data |
-| Key storage | KMS (documented) | Local file | Security — Private Keys never in plaintext |
-| Deployment | ArgoCD App of Apps | kubectl apply | GitOps, easy rollback |
+| Frontend rendering | SSR + SWR | CSR only | Fast initial render + fresh data |
+| Key storage | KMS/HSM (documented) | Local file | Private Keys never in plaintext |
+| DB deployment | AWS RDS | StatefulSet | Managed service, automatic backups, no operational overhead |
+| Deployment | ArgoCD App of Apps | kubectl apply | GitOps, declarative, easy rollback |
+| Audit log storage | Elasticsearch (documented) | PostgreSQL | Append-only, time-series nature suits NoSQL |
+| Observability | Datadog → Grafana Stack | Single tool | Start fast, migrate as scale grows |
