@@ -7,7 +7,7 @@ lint:
 	cargo clippy --all-targets --all-features -- -D warnings
 
 test:
-	DATABASE_URL=postgres://postgres:password@localhost:5433/cert_service SQLX_OFFLINE=true cargo test --all
+	DATABASE_URL=postgres://postgres:password@localhost:5432/cert_service SQLX_OFFLINE=true cargo test --all
 
 check: fmt lint test
 

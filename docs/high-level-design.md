@@ -108,7 +108,7 @@
 | GET | /health/live | Liveness probe |
 | GET | /health/ready | Readiness probe |
 
-> 📊 **Diagram:** Certificate Lifecycle Flow (Excalidraw)
+> 📊 **Diagram:** Certificate Lifecycle Flow (Excalidraw)  
 ![alt text](images/certificate-lifecycle-flow.png)
 
 ### 3.3 PostgreSQL Schema & Indexing Strategy
