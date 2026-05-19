@@ -36,7 +36,7 @@ export default function CertificateTable({ initialData, cursor }: CertificateTab
         {data?.data.map(cert => (
           <tr
             key={cert.id}
-            className="border-b hover:bg-gray-50 cursor-pointer hover:text-gray-900"
+            className="border-b hover:bg-gray-50 cursor-pointer hover:text-gray-900 relative"
           >
             <td className="p-3">
               <a href={`/inventory/${cert.id}`}
