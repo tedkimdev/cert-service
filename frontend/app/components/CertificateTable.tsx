@@ -41,7 +41,7 @@ export default function CertificateTable({ initialData, cursor }: CertificateTab
             <td className="p-3">
               <a href={`/inventory/${cert.id}`}
                 className="absolute inset-0"
-              />\
+              />
               {cert.subject}
             </td>
             <td className="p-3">{cert.issuer}</td>
